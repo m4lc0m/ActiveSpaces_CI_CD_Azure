@@ -1,7 +1,4 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+# ActiveSpaces Pipeline
 
 trigger:
 - main
@@ -9,11 +6,192 @@ trigger:
 pool:
   name: local
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+parameters:
+- name: test
+  displayName: ActiveSpaces Operations
+  type: string
+  values:
+  - create
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+variables:
+- name: realm_name
+  value: 'test'
+- name: realm_ip
+  value: 'localhost'
+- name: realm_port
+  value: '8888'
+- name: dir_path
+  value: 'C:\Users\Utente\Desktop'
+- name: dir_name
+  value: 'newtestdir'
+- name: datagrid_name
+  value: 'mygrid'
+- name: keeper_name
+  value: 'mykeeper'
+- name: copyset_name
+  value: 'mycopyset'
+- name: node_name
+  value: 'mynode'
+- name: node2_name
+  value: 'mynode2'
+- name: proxy_name
+  value: 'myproxy'
+- name: table_name
+  value: 'mytable'
+- name: param1_name
+  value: 'myparam'
+- name: param1_type
+  value: 'string'
+- name: param2_name
+  value: 'myparam2'
+- name: param2_type
+  value: 'string'
+
+
+jobs:
+  - job: setupRealmServer
+    displayName: Realm Server start
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+        
+    - task: CmdLine@2
+      inputs:
+        script: |
+              echo REALM SERVER START
+
+              cd $(dir_path)
+
+              if not exist $(dir_name) mkdir $(dir_name)
+
+              cd $(dir_name)
+
+              tibftlserver -n $(realm_name)@$(realm_ip):$(realm_port)
+              
+              echo REALM SERVER DONE
+
+  - job: setupDatagrid
+    displayName: Datagrid Configuration start
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+      
+    - task: CmdLine@2
+      inputs:
+       script: |
+          echo DATAGRID CONFIGURATION START
+
+          start http://(realm_ip):$(realm_port)
+
+          cd $(dir_path)
+          
+          tibdg -r http://(realm_ip):$(realm_port) grid create $(datagrid_name)
+
+          if not exist $(datagrid_name) mkdir $(datagrid_name)
+
+          tibdg -r http://(realm_ip):$(realm_port) -g $(datagrid_name) keeper create $(keeper_name)
+          
+          tibdg -r http://(realm_ip):$(realm_port) -g $(datagrid_name) copyset create $(copyset_name)
+
+          tibdg -r http://(realm_ip):$(realm_port) -g $(datagrid_name) node create -cs $(copyset_name) $(node_name)
+          
+          tibdg -r http://(realm_ip):$(realm_port) -g $(datagrid_name) node create -cs $(copyset_name) $(node2_name)
+
+          tibdg -r http://(realm_ip):$(realm_port) -g $(datagrid_name) proxy create $(proxy_name)
+          
+          echo DATAGRID CONFIGURATION DONE
+
+  - job: startKeeper
+    displayName: Keeper start
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+      
+    - task: CmdLine@2
+      inputs:
+       script: |
+          echo KEEPER START
+
+          cd $(dir_path)
+          
+          tibdgkeeper -r http://(realm_ip):$(realm_port) -g $(datagrid_name) -n $(keeper_name)
+          
+          echo KEEPER DONE
+
+  - job: startNode
+    displayName: Node start
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+      
+    - task: CmdLine@2
+      inputs:
+       script: |
+          echo NODE START
+
+          cd $(dir_path)
+          
+          tibdgnode -r http://(realm_ip):$(realm_port) -g $(datagrid_name) -n $(node_name)
+          
+          echo NODE DONE
+
+  - job: startNode2
+    displayName: Node2 start
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+      
+    - task: CmdLine@2
+      inputs:
+       script: |
+          echo NODE2 START
+
+          cd $(dir_path)
+          
+          tibdgnode -r http://(realm_ip):$(realm_port) -g $(datagrid_name) -n $(node2_name)
+          
+          echo NODE2 DONE
+
+  - job: startProxy
+    displayName: Proxy start
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+      
+    - task: CmdLine@2
+      inputs:
+       script: |
+          echo PROXY START
+
+          cd $(dir_path)
+          
+          tibdgproxy -r http://(realm_ip):$(realm_port) -g $(datagrid_name) -n $(proxy_name)
+          
+          echo PROXY DONE
+
+
+  - job: monitoringStart
+    displayName: Monitoring
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+      
+    - task: CmdLine@2
+      inputs:
+       script: |
+          echo MONITORING START
+
+          cd C:\activespaces\6.7\monitoring
+          
+          monitor-start.py -f http://(realm_ip):$(realm_port)
+          
+          echo MONITORING DONE
+
+  - job: tableConfiguration
+    displayName: Table Configuration
+    steps:
+    - script: echo building $(Build.BuildNumber) with ${{ parameters.test }}
+      
+    - task: CmdLine@2
+      inputs:
+       script: |
+          echo TABLE CONFIGURATION START
+
+          cd $(dir_path)
+          
+          tibdg -r http://(realm_ip):$(realm_port) -g $(datagrid_name) table create $(table_name) $(param1_name) $(param1_type) $(param2_name) $(param2_type)
+          
+          echo TABLE CONFIGURATION DONE
